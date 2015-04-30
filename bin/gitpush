@@ -1,0 +1,79 @@
+#!/bin/bash
+b=$(tput bold);
+_b=$(tput sgr0);
+red=$(tput setaf 1);
+_red=$(tput sgr0);
+function log
+{
+    echo $*
+    $*
+    return 0;
+}
+function doActualPush
+{
+    local remote_br=$1;
+    git push origin HEAD:refs/for/${remote_br};
+}
+function chooseBranches
+{
+    #local branches=(`git branch | cut -c3-`);
+    local branches=(`git branch -a |grep  origin |cut -c18-`);
+    local len=${#branches[*]};
+    local i=0;
+    local cols=0;
+    local curr_br='';
+    local curr_br_i='';
+    if test -n ${curr_br};
+    then
+        curr_br=`git branch |grep '* '| cut -c3-`;
+        export curr_br;
+    fi
+    curr_br_i=$(expr $(git br -a |grep origin |nl |grep "`git br -vv |grep "* ${curr_br}" |awk -F"[" '{print $2}' |awk -F: '{print $1}'`$"|awk '{print $1}') - 1)
+    for (( i=0; i<=${len}; i++ ));
+    do
+        local br="${branches[$i]}";
+        local br_len=`echo ${br} | wc -c`;
+        cols=$(expr ${cols} + ${br_len} + 8);
+        if test ${cols} -ge 80;
+        then
+            echo;
+            cols=0;
+        fi
+        if test $i -eq $curr_br_i;
+        then
+            br="${b}${br}${_b}";
+            col_i=$i;
+        fi
+        echo -ne "${b}[$i]${_b} ${br}\t";
+    done;
+    echo;
+#set -x
+    echo "${b}你确定，你已经都本地验证过了哈？记得KRILLIN-1018.${_b}"
+    read -p "Which branch are you willing to push to default:${b}[${curr_br_i}]${_b}?" br_num;
+    if test -z ${br_num};
+    then
+        curr_br="${branches[${curr_br_i}]}";
+        doActualPush ${curr_br};
+    elif test `echo ${br_num} |grep "^[0-9]*$"`;
+    then
+        if test ${br_num} -gt ${len};
+        then
+            echo "${red}Your input out of  range${_red}";
+            chooseBranches $*;
+        else
+            curr_br="${branches[${br_num}]}";
+            #TODO add dynamic reviewer list
+            doActualPush ${curr_br};
+        fi
+    else
+        echo "${red}Your input wrong${_red}";
+        chooseBranches $*;
+    fi
+}
+
+main()
+{
+    chooseBranches $*;
+}
+
+#main

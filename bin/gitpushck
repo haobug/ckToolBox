@@ -1,0 +1,7 @@
+source ~/bin/gitpush
+function doActualPush
+{
+    local remote_br=$1;
+    git push --receive-pack='git receive-pack --reviewer=some.one' origin HEAD:refs/for/${remote_br};
+}
+main $*;
